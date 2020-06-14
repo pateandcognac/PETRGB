@@ -1,269 +1,268 @@
 
 	{loadaddr:$0401}
-{:CASSPORT}
-	REM THIS ODD ROUTINE EXISTS CUZ I CAN'T TOTALLY FIGURE OUT THE CASSETTE PORT
-	PRINT "{CLEAR}{DOWN:2} INITIALIZE CASSETTE PORT #2? (Y/(N))"
-	{:GC}
-	GET C$
-	IF C$="" THEN GOTO {:GC}
-	IF C$="Y" THEN GOTO {:CP}
-	GOTO {:INITIALIZE}
-	{:CP}
-	PRINT
-	PRINT "PRESS RUN/STOP, AND THEN TYPE 'CONT' AND PRESS <RETURN>"
-	LOAD "",2
-	PRINT 
-	PRINT " OK"
-	GOTO {:INITIALIZE}
+{:cassport}
+	rem this odd routine exists cuz i can't totally figure out the cassette port
+	print "{clear}{down:2} initialize cassette port #2? (y/(n))"
+	{:gc}
+	get c$
+	if c$="" then goto {:gc}
+	if c$="y" then goto {:cp}
+	goto {:initialize}
+	{:cp}
+	print
+	print "press run/stop, and then type 'cont' and press <return>"
+	load "",2
+	print
+	print " ok"
+	goto {:initialize}
 
 
-{:INITIALIZE}
-	POKE 59459,255 :REM SET ALL BITS TO OUTPUT
-	POKE 59467,PEEK(59467) AND 227 :REM DISABL SHFTREG CB2,&SET TO OUTPUT
-	POKE 59468,(PEEK(59468) AND 31) OR 192 : REM SET CB2 LOW
-	POKE 59468,PEEK(59468) AND 254 :REM CA1 TRIGGERS FALLING EDGE
-	BB=0
-	GOSUB {:ARDUPWR} 
+{:initialize}
+	poke 59459,255 :rem set all bits to output
+	poke 59467,peek(59467) and 227 :rem disabl shftreg cb2,&set to output
+	poke 59468,(peek(59468) and 31) or 192 : rem set cb2 low
+	poke 59468,peek(59468) and 254 :rem ca1 triggers falling edge
+	bb=0
+	gosub {:ardupwr}
 
-{:LOOP}
-	PRINT "{CLEAR}{DOWN:2}
-	PRINT "  RGB LED CONTROL"
-	PRINT "  ---------------"
-	pRINT
-	PRINT "  SELECT MODE"
-	PRINT
-	PRINT "  1 ... SOLID COLOR "    
-	PRINT "  2 ... RAINBOW      "     
-	PRINT "  3 ... BLINKENLIGHTS "     
-	PRINT "  4 ... MATRIX"
-	PRINT "  5 ... SHIFT REGISTER"
-{:INSUB}
-	PRINT "  X ... EXIT LED SUBROUTINE"
-	PRINT "  Q ... QUIT TO BASIC"
-	PRINT "  A ... POWER CYCLE ARDUINO"
-	PRINT 
-	PRINT
-	INPUT "  ENTER SELECTION:";C$	
-	PRINT		
-	IF C$="" THEN GOTO {:LOOP}
-	IF C$="Q" THEN {:BYE}
-	IF C$="X" THEN C$="255"
-	IF C$="A" THEN GOSUB {:ARDUPWR}
-	BB=VAL(C$):REM CONVERTS STRING TO INTEGER, BB=0 IF NONNUMERIC
-	IF BB=0 THEN GOTO {:LOOP}
-	IF BB=255 THEN {:XSUB}
-	GOSUB {:SENDBYTE} :REM SEND MODE SELECTION TO ARDUINO
-	ON BB GOTO {:SOLID}, {:RAINBOW}, {:BLINKEN}, {:MATRIX}, {:SHFTREG}
-	GOTO {:LOOP}
+{:loop}
+	print "{clear}{down:2}
+	print "  rgb led control"
+	print "  ---------------"
+	print
+	print "  select mode"
+	print
+	print "  1 ... solid color "
+	print "  2 ... rainbow      "
+	print "  3 ... blinkenlights "
+	print "  4 ... matrix"
+	print "  5 ... shift register"
+{:insub}
+	print "  x ... exit led subroutine"
+	print "  q ... quit to basic"
+	print "  a ... power cycle arduino"
+	print
+	print
+	input "  enter selection:";c$
+	print
+	if c$="" then goto {:loop}
+	if c$="q" then {:bye}
+	if c$="x" then c$="255"
+	if c$="a" then gosub {:ardupwr}
+	bb=val(c$):rem converts string to integer, bb=0 if nonnumeric
+	if bb=0 then goto {:loop}
+	if bb=255 then {:xsub}
+	gosub {:sendbyte} :rem send mode selection to arduino
+	on bb goto {:solid}, {:rainbow}, {:blinken}, {:matrix}, {:shftreg}
+	goto {:loop}
 
- {:SOLID}
-	PRINT "{CLEAR}{DOWN:2}"
-	PRINT " SOLID COLOR MODE"
-	INPUT " ENTER R,G,B VALUES (0-255)";R,G,B
-	BB=R : GOSUB {:SENDBYTE}
-	BB=G : GOSUB {:SENDBYTE}
-	BB=B : GOSUB {:SENDBYTE}
-	PRINT
-	GOTO {:INSUB}
+ {:solid}
+	print "{clear}{down:2}"
+	print " solid color mode"
+	input " enter r,g,b values (0-255)";r,g,b
+	bb=r : gosub {:sendbyte}
+	bb=g : gosub {:sendbyte}
+	bb=b : gosub {:sendbyte}
+	print
+	goto {:insub}
 
- {:RAINBOW}
-	PRINT "{CLEAR}{DOWN:2}"
-	PRINT " RAINBOW MODE"
-	PRINT
-	GOTO {:INSUB}
-	
- {:BLINKEN}
-	PRINT "{CLEAR}{DOWN:2}"
-	PRINT " BLINKENLIGHTS MODE"
-	INPUT " ENTER R,G,B VALUES (0-255)";R,G,B
-	BB=R : GOSUB {:SENDBYTE}
-	BB=G : GOSUB {:SENDBYTE}
-	BB=B : GOSUB {:SENDBYTE}
-	PRINT
-	GOTO {:INSUB}
+ {:rainbow}
+	print "{clear}{down:2}"
+	print " rainbow mode"
+	print
+	goto {:insub}
 
- {:MATRIX}
-	REM MAX # STREAMS,80/40 COLS,UPWARD SCROLL SPEED, SCREEN MEM LOC
-	M=4 :C=80 :S$="    ":L=32768
-	FOR I=0 TO 24 : PRINT : NEXT I: REM CLEAR SCREEN
+ {:blinken}
+	print "{clear}{down:2}"
+	print " blinkenlights mode"
+	input " enter r,g,b values (0-255)";r,g,b
+	bb=r : gosub {:sendbyte}
+	bb=g : gosub {:sendbyte}
+	bb=b : gosub {:sendbyte}
+	print
+	goto {:insub}
 
-	{:MATRIXLOOP}
-		GET A$: IF A$<>"" THEN GOTO {:EXITMATRIX} :REM EXIT IF KEYPRESS
-		GOSUB {:STREAMS}
-		IF RND(1)<.38 THEN GOSUB {:DRIPS} :REM LIKELYHOOD OF DRIP 38%
-		GOTO {:MATRIXLOOP}
-		
-		{:STREAMS}
-		REM        CHARACTER STREAMS
-		S=RND(1)*M : REM NUMBER OF STREAMS IN THIS LOOP
-		FOR I=0 TO S :X(I)=INT(RND(1)*C) :NEXT I :REM STREAM POSITIONS
-		REM DEFINE STARTING&ENDING LOCATIONS FOR STREAM, & SPEED
-		FOR Y=RND(1)*15 TO RND(1)*7+18 STEP RND(1)+.3 
-		FOR I=0 TO S : REM DRAW STREAMS
-		POKE L+X(I)+(INT(Y-I)*C),RND(1)*255
-		PRINT S$; :REM SCROLL UPWARDS
-		NEXT I :NEXT Y :RETURN
-		
-		{:DRIPS}
-		REM        CHARACTER DRIPS
-		REM NUMBER OF POSSIBLE DRIPS MAX STREAMS-1
-		FOR I=1 TO RND(1)*(M-1)
-		DX=RND(1)*C :REM DRIP X POSITION
-		FOR Y=1 TO 24 STEP RND(1)+.75 :REM DRAW DRIP
-		PY=L+DX+INT(Y)*C
-		POKE PY,RND(1)*255 :POKE PY,RND(1)*255 :POKE PY,32
-		PRINT S$; : REM SCROLL UP
-		NEXT Y :NEXT I :RETURN
+ {:matrix}
+	rem max # streams,80/40 cols,upward scroll speed, screen mem loc
+	m=4 :c=80 :s$="    ":l=32768
+	for i=0 to 24 : print : next i: rem clear screen
 
-	{:EXITMATRIX}
-	BB=255 : GOSUB {:SENDBYTE}
-	FOR I=0 TO 24 : PRINT : NEXT I
-	GOTO {:LOOP}
+	{:matrixloop}
+		get a$: if a$<>"" then goto {:exitmatrix} :rem exit if keypress
+		gosub {:streams}
+		if rnd(1)<.38 then gosub {:drips} :rem likelyhood of drip 38%
+		goto {:matrixloop}
 
+		{:streams}
+		rem        character streams
+		s=rnd(1)*m : rem number of streams in this loop
+		for i=0 to s :x(i)=int(rnd(1)*c) :next i :rem stream positions
+		rem define starting&ending locations for stream, & speed
+		for y=rnd(1)*15 to rnd(1)*7+18 step rnd(1)+.3
+		for i=0 to s : rem draw streams
+		poke l+x(i)+(int(y-i)*c),rnd(1)*255
+		print s$; :rem scroll upwards
+		next i :next y :return
 
- {:SHFTREG}
-	PRINT "{CLEAR}{DOWN:2}"
-	PRINT " SHIFT REGISTER MODE"
-	PRINT
-	INPUT " ENTER R,G,B VALUES (0-255)";R,G,B
-	BB=R : GOSUB {:SENDBYTE}
-	BB=G : GOSUB {:SENDBYTE}
-	BB=B : GOSUB {:SENDBYTE}
-	INPUT " ENTER LED MATRIX REFRESH DELAY (0-255)";BB
-	GOSUB {:SENDBYTE}
-	PRINT
-	PRINT " PRESS M TO MUTE AUDIO"
-	PRINT " PRESS ANY OTHER KEY TO CONTINUE"""
-	BB=1
-	{:GETA}
-	GET A$
-	IF A$="" THEN GOTO  {:GETA}
-	IF A$="M" THEN BB=0
-	GOSUB {:SENDBYTE}
-	POKE 59467,PEEK(59467)AND227OR16 :REM ENABLE SHIFT REG
-	T=0
-	D=0	
-	P$="+"
-	REM SET UP FOR DECIMAL TO BINARY CALCULATIONS
-	Z(1)=1
-	FOR I=2 TO 8
-	Z(I)=Z(I-1)*2
-	NEXT I
+		{:drips}
+		rem        character drips
+		rem number of possible drips max streams-1
+		for i=1 to rnd(1)*(m-1)
+		dx=rnd(1)*c :rem drip x position
+		for y=1 to 24 step rnd(1)+.75 :rem draw drip
+		py=l+dx+int(y)*c
+		poke py,rnd(1)*255 :poke py,rnd(1)*255 :poke py,32
+		print s$; : rem scroll up
+		next y :next i :return
 
-	{:SHIFTLOOP}
-		POKE 59464,T : REM SETS SHIFT REGISTER TIMER
-		POKE 59466,D : REM OUPUTS ON SHIFT REGISTER	
-
-		PRINT "{CLEAR}{DOWN:2} SHIFT REGISTER MODE"
-		PRINT
-		PRINT " TIMER:";T
-		PRINT
-		PRINT " DATA:";
-		REM CALCULATE AND DISPLAY WHICH BITS ARE ON
-		PRINT (DAND1);P$;(DAND2);P$;(DAND4);P$;(DAND8);P$;
-		PRINT (DAND16);P$;(DAND32);P$;(DAND64);P$;(DAND128);"=";D
-		PRINT
-		PRINT " A - DECREASE DATA-10         E - DECREASE TIMER-10"
-		PRINT " S - DECREASE DATA-1          R - DECREASE TIMER-1"
-		PRINT " D - SET DATA TO 170          T - SET TIMER TO 128"
-		PRINT " F - INCREASE DATA+1          Y - INCREASE TIMER+1"
-		PRINT " G - INCREASE DATA+10         U - INCREASE TIMER+10"	
-		PRINT " X - EXIT SUBROUTINE          Q - QUIT TO BASIC" 
-		PRINT " 0 - SET TIMER & DATA TO 0  
-		PRINT	
-		PRINT " NUMBERS 1 THROUGH 8 SET CORRESPONDING BITS ON DATA STREAM"
-		
-		{:GETKEY}
-		GET K$
-		IF K$="" THEN {:GETKEY}	
-		K=VAL(K$)
-		IF K=0 THEN GOTO {:ALPHA}
-
-		{:BITTOGGLE}
-		K=Z(K)
-		D=(NOT(D AND K)) AND (NOT(NOT D AND NOT K)):REM XOR BITS
-		GOTO {:SHIFTLOOP}
-
-		{:ALPHA}
-		IF K$="E" THEN T=T-10
-		IF K$="R" THEN T=T-1
-		IF K$="T" THEN T=128
-		IF K$="Y" THEN T=T+1
-		IF K$="U" THEN T=T+10
-		IF K$="A" THEN D=D-10
-		IF K$="S" THEN D=D-1
-		IF K$="D" THEN D=170
-		IF K$="F" THEN D=D+1
-		IF K$="G" THEN D=D+10
-		IF K$="0" THEN D=0:T=0
-		IF K$="X" THEN GOTO {:INITIALIZE}
-		IF K$="Q" THEN GOTO {:SHFTQUIT}
-		IF D<=-1 THEN D=255
-		IF D>=256 THEN D=0 
-		IF T<=-1 THEN T=255
-		IF T>=256 THEN T=0
-		GOTO {:SHIFTLOOP}	
-
-	{:SHFTQUIT}
-	PRINT
-	PRINT " QUITING TO BASIC"
-	PRINT " SHIFT REGISTER MODE IS ACTIVE"
-	END
+	{:exitmatrix}
+	bb=255 : gosub {:sendbyte}
+	for i=0 to 24 : print : next i
+	goto {:loop}
 
 
- {:ARDUPWR}
-	POKE 59456,(PEEK(59456)OR16) :REM CASSETTE PORT 2 MOTOR OFF
-	PRINT "{CLEAR}{DOWN:2}POWER CYCLING ARDUINO"
-	PRINT 
-	PRINT "ONE MOMENT";
-	FOR J=1 TO 25 :PRINT ".";:NEXT J
-	POKE 59456,(PEEK(59456)AND239):REM CASSETTE PORT 2 MOTOR ON
-	FOR J=1 TO 500 :PRINT ".";:NEXT J
-	PRINT : PRINT "OK"
-	RETURN
+ {:shftreg}
+	print "{clear}{down:2}"
+	print " shift register mode"
+	print
+	input " enter r,g,b values (0-255)";r,g,b
+	bb=r : gosub {:sendbyte}
+	bb=g : gosub {:sendbyte}
+	bb=b : gosub {:sendbyte}
+	input " enter led matrix refresh delay (0-255)";bb
+	gosub {:sendbyte}
+	print
+	print " press m to mute audio"
+	print " press any other key to continue"""
+	bb=1
+	{:geta}
+	get a$
+	if a$="" then goto  {:geta}
+	if a$="m" then bb=0
+	gosub {:sendbyte}
+	poke 59467,peek(59467)and227or16 :rem enable shift reg
+	t=0
+	d=0
+	p$="+"
+	rem set up for decimal to binary calculations
+	z(1)=1
+	for i=2 to 8
+	z(i)=z(i-1)*2
+	next i
 
-{:XSUB}
-	PRINT
-	PRINT " EXITING SUBROUTINE..."
-	GOSUB {:SENDBYTE}
-	PRINT " OK"
-	GOTO {:LOOP}	
+	{:shiftloop}
+		poke 59464,t : rem sets shift register timer
+		poke 59466,d : rem ouputs on shift register
+
+		print "{clear}{down:2} shift register mode"
+		print
+		print " timer:";t
+		print
+		print " data:";
+		rem calculate and display which bits are on
+		print (dand1);p$;(dand2);p$;(dand4);p$;(dand8);p$;
+		print (dand16);p$;(dand32);p$;(dand64);p$;(dand128);"=";d
+		print
+		print " a - decrease data-10         e - decrease timer-10"
+		print " s - decrease data-1          r - decrease timer-1"
+		print " d - set data to 170          t - set timer to 128"
+		print " f - increase data+1          y - increase timer+1"
+		print " g - increase data+10         u - increase timer+10"
+		print " x - exit subroutine          q - quit to basic"
+		print " 0 - set timer & data to 0
+		print
+		print " numbers 1 through 8 set corresponding bits on data stream"
+
+		{:getkey}
+		get k$
+		if k$="" then {:getkey}
+		k=val(k$)
+		if k=0 then goto {:alpha}
+
+		{:bittoggle}
+		k=z(k)
+		d=(not(d and k)) and (not(not d and not k)):rem xor bits
+		goto {:shiftloop}
+
+		{:alpha}
+		if k$="e" then t=t-10
+		if k$="r" then t=t-1
+		if k$="t" then t=128
+		if k$="y" then t=t+1
+		if k$="u" then t=t+10
+		if k$="a" then d=d-10
+		if k$="s" then d=d-1
+		if k$="d" then d=170
+		if k$="f" then d=d+1
+		if k$="g" then d=d+10
+		if k$="0" then d=0:t=0
+		if k$="x" then goto {:initialize}
+		if k$="q" then goto {:shftquit}
+		if d<=-1 then d=255
+		if d>=256 then d=0
+		if t<=-1 then t=255
+		if t>=256 then t=0
+		goto {:shiftloop}
+
+	{:shftquit}
+	print
+	print " quiting to basic"
+	print " shift register mode is active"
+	end
+
+
+ {:ardupwr}
+	poke 59456,(peek(59456)or16) :rem cassette port 2 motor off
+	print "{clear}{down:2}power cycling arduino"
+	print
+	print "one moment";
+	for j=1 to 25 :print ".";:next j
+	poke 59456,(peek(59456)and239):rem cassette port 2 motor on
+	for j=1 to 500 :print ".";:next j
+	print : print "ok"
+	return
+
+{:xsub}
+	print
+	print " exiting subroutine..."
+	gosub {:sendbyte}
+	print " ok"
+	goto {:loop}
 
 
 
 
-{:SENDBYTE}
-	REM SEND BB BYTE
-	POKE 59468,PEEK(59468) OR 224 :REM SET CB2 HIGH TO SIGNAL ARDUINO
-	POKE 59457,BB :REM SEND BYTE
-	POKE 59468,(PEEK(59468) AND 31) OR 192 :REM RETURN CB2 TO LOW STATE
-	
-	{:WAITCA1}
-	REM PART OF SENDBYTE SUBROUTINE, BUT DOESN'T STRICTLY HAVE TO BE
-	IF (PEEK(59469)AND2)=0 THEN {:WAITCA1} : REM WAIT FOR CA1 STROBE FROM ARDUINO
-	RETURN
+{:sendbyte}
+	rem send bb byte
+	poke 59468,peek(59468) or 224 :rem set cb2 high to signal arduino
+	poke 59457,bb :rem send byte
+	poke 59468,(peek(59468) and 31) or 192 :rem return cb2 to low state
 
-{:BYE}
-	PRINT
-	PRINT "EXITING RGB CONTROL"
-	END
+	{:waitca1}
+	rem part of sendbyte subroutine, but doesn't strictly have to be
+	if (peek(59469)and2)=0 then {:waitca1} : rem wait for ca1 strobe from arduino
+	return
 
-{:REMINDERS}
-	REM REMINDERS
-	POKE 59468,PEEK(59468) OR 224 :REM SET CB2 HIGH
-	POKE 59468,(PEEK(59468) AND 31) OR 192 :END :REM SET CB2 LOW
-	POKE 59459,255 :REM SET ALL BITS TO OUTPUT
-	POKE 59467,PEEK(59467) AND 227 :REM DISABL SHFTREG CB2,&SET TO OUTPUT
-	POKE 59467,PEEK(59467)AND227OR16 :REM ENABLE SHIFT REG
-	POKE 59464,T : REM SETS SHIFT REGISTER TIMER
-	POKE 59466,SHFTDATA : REM OUPUTS ON SHIFT REGISTER
-	POKE 59471,J :REM SEND DATA OUT
-	POKE 59457,J :REM SEND DATA OUT AND RESET CA1 FLAG
-	POKE 59468,PEEK(59468) AND 254 :REM CA1 TRIGGERS FALLING EDGE
-	POKE 59468,PEEK(59468) OR 1 :REM CA1 TRGGERS RISING EDGE
-	IF (PEEK(59469) AND 2)=0 THEN WHATEVER :REM WAIT FOR CA1 TO GO HIGH
-	POKE 59467,PEEK(59467) OR 1 :REM DATA LATCHED WHEN CA1 TRIGGERS
-	POKE 59468,PEEK(59468) OR 224 :REM SET CB2 HIGH
-	POKE 59456,(PEEK(59456)OR16) :REM TURN OFF CASSETTE 2 MOTOR/ARDUINO
-	POKE 59456,(PEEK(59456)AND239):REM TURN ON CASSETTE 2 MOTOR/ARDUINO
+{:bye}
+	print
+	print "exiting rgb control"
+	end
 
+{:reminders}
+	rem reminders
+	poke 59468,peek(59468) or 224 :rem set cb2 high
+	poke 59468,(peek(59468) and 31) or 192 :end :rem set cb2 low
+	poke 59459,255 :rem set all bits to output
+	poke 59467,peek(59467) and 227 :rem disabl shftreg cb2,&set to output
+	poke 59467,peek(59467)and227or16 :rem enable shift reg
+	poke 59464,t : rem sets shift register timer
+	poke 59466,shftdata : rem ouputs on shift register
+	poke 59471,j :rem send data out
+	poke 59457,j :rem send data out and reset ca1 flag
+	poke 59468,peek(59468) and 254 :rem ca1 triggers falling edge
+	poke 59468,peek(59468) or 1 :rem ca1 trggers rising edge
+	if (peek(59469) and 2)=0 then whatever :rem wait for ca1 to go high
+	poke 59467,peek(59467) or 1 :rem data latched when ca1 triggers
+	poke 59468,peek(59468) or 224 :rem set cb2 high
+	poke 59456,(peek(59456)or16) :rem turn off cassette 2 motor/arduino
+	poke 59456,(peek(59456)and239):rem turn on cassette 2 motor/arduino
